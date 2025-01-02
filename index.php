@@ -3,7 +3,7 @@
 
 require_once('inscription.php');
 require_once('connexion.php');
-if (isset($_SERVER['REQUEST_METHOD']) && $_SERVER['REQUEST_METHOD']==='POST'){
+if (isset($_SERVER['REQUEST_METHOD']) && $_SERVER['REQUEST_METHOD'] === 'POST') {
     if (isset($_POST['typeFormu']) && $_POST['typeFormu'] === 'inscription') {
         if (isset($_POST['nom']) and isset($_POST['prenom']) && isset($_POST['numero']) && isset($_POST['pseudo']) && isset($_POST['mdpFirst']) && isset($_POST['mdp'])) {
             $nom = htmlspecialchars($_POST['nom']);
@@ -12,26 +12,65 @@ if (isset($_SERVER['REQUEST_METHOD']) && $_SERVER['REQUEST_METHOD']==='POST'){
             $numero = htmlspecialchars($_POST['numero']);
             $mdpFirst = $_POST['mdpFirst'];
             $mdp = $_POST['mdp'];
-            if ($mdpFirst === $mdp) {
-                $inscrire = new Inscription();
-                $inscrire->inscriptionUtilisateur($nom, $prenom, $pseudo, $numero, $mdp);
-            } else {
-                echo 'les mots de passes ne correspondent pas';
+
+
+            if (empty($nom)) {
+                $fieldErrors['nom'] = "Le nom est requis.";
             }
+
+
+            if (empty($pseudo)) {
+                $fieldErrors['pseudo'] = "Le pseudo est requis";
+            }
+
+            if (empty($mdpFirst) && empty($mdp)) {
+                $fieldErrors['mdpFirst'] = "Le mot de passe est requis.";
+            } else {
+                // Vérification de la force du mot de passe
+                $inscrire = new Inscription();
+                $passwordErrors = $inscrire->verifierMotDePasseFort($mdp);
+
+                if (!empty($passwordErrors) && is_array($passwordErrors)) {
+                    $fieldErrors['mdpFirst'] = implode('<br>', $passwordErrors);
+                }
+            }
+
+            if ($mdpFirst !== $mdp) {
+                $fieldErrors['mdp'] = "Les mots de passe ne correspondent pas.";
+            }
+
+            $inscrire = new Inscription();
+            $inscrire->inscriptionUtilisateur($nom, $prenom, $pseudo, $numero, $mdp);
         }
-    } 
-    elseif (isset($_POST['typeFormu']) && $_POST['typeFormu'] === 'connexion') {
+    } elseif (isset($_POST['typeFormu']) && $_POST['typeFormu'] === 'connexion') {
         if (isset($_POST['pseudo']) && isset($_POST['mdp'])) {
             $pseudo = $_POST['pseudo'];
             $mdp = $_POST['mdp'];
 
-            $connecter = new Session();
-            $connecter->sessionUtilisateur($pseudo, $mdp);
+            if (empty($pseudo)) {
+                $fieldErrors['pseudo'] = "Le pseudo est requis.";
+            }
+
+            if (empty($mdp)) {
+                $fieldErrors['mdp'] = "Le mot de passe est requis.";
+            }
+
+            if (empty($fieldErrors)) {
+                try {
+                    $connecter = new Session();
+                    if ($connecter->sessionUtilisateur($pseudo, $mdp)) {
+                        echo "<p style='color:green;'>Connexion réussie !</p>";
+                    } else {
+                        $fieldErrors['general'] = "Pseudo ou mot de passe incorrect.";
+                    }
+                } catch (Exception $e) {
+                    $fieldErrors['general'] = "Erreur lors de la connexion : " . $e->getMessage();
+                }
+            }
         }
-    }
-    else {
+    } else {
         echo "Une erreur c'est produite";
-    } 
+    }
 }
 
 ?>
@@ -41,7 +80,7 @@ if (isset($_SERVER['REQUEST_METHOD']) && $_SERVER['REQUEST_METHOD']==='POST'){
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="stylesheet" href="pico-main/css/pico.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
     <title>Page d'inscription</title>
     <style>
         h1 {
@@ -50,8 +89,13 @@ if (isset($_SERVER['REQUEST_METHOD']) && $_SERVER['REQUEST_METHOD']==='POST'){
 
         }
 
-      
-      
+        .error {
+            color: red;
+            padding: 20px 20px;
+            font-size: 15px;
+            background-color: rgba(213, 213, 212, 0.86);
+            border-radius: 10px;
+        }
     </style>
 </head>
 
@@ -64,20 +108,34 @@ if (isset($_SERVER['REQUEST_METHOD']) && $_SERVER['REQUEST_METHOD']==='POST'){
             <fieldset>
                 <form action="" method="post">
                     <h1>Page d'inscription</h1>
+
                     <input type="hidden" name="typeFormu" value="inscription">
+
                     <div class="item">
                         <label for="nom">Entrez votre nom</label>
                         <input type="text" name="nom" id="" required>
+                        <?php if (isset($fieldErrors['nom'])) { ?>
+                            <p class="error"><?= $fieldErrors['nom'] ?></p>
+                        <?php } ?>
                     </div>
 
                     <div class="item">
                         <label for="prenon">Entrez votre prénom</label>
                         <input type="text" name="prenom" id="" required>
+
                     </div>
+
                     <div>
                         <label for="pseudo">Définissez votre pseudo</label>
-                        <input type="text" name="pseudo" id="pseudo">
+                        <input type="text" name="pseudo" id="pseudo" required>
+                        <?php if (isset($fieldErrors['pseudo'])) { ?>
+                            <p class="error"><?= $fieldErrors['pseudo'] ?></p>
+                            <?php if (in_array("Le pseudo existe déjà. Veuillez en choisir un autre.", $errorMessages)) {
+                                echo "<div class=\"error\" style='color: red;'>Le pseudo existe déjà. Veuillez en choisir un autre.</div>";
+                            } ?>
+                        <?php } ?>
                     </div>
+
                     <div class="item">
                         <label for="numero">Quel est votre numero de Téléphone ?</label>
                         <input type="tel" name="numero" placeholder="Tel" aria-label="Tel" autocomplete="tel">
@@ -86,18 +144,27 @@ if (isset($_SERVER['REQUEST_METHOD']) && $_SERVER['REQUEST_METHOD']==='POST'){
                     <div class="item">
                         <label for="mdp">Définissez un mot de passe </label>
                         <input type="password" name="mdpFirst" id="" required>
+                        <?php if (isset($fieldErrors['mdpFirst'])) { ?>
+                            <p class="error"><?= $fieldErrors['mdpFirst'] ?></p>
+                        <?php } ?>
                     </div>
+
                     <div class="item">
                         <label for="">Confirmez votre mot de passe</label>
                         <input type="password" name="mdp" required>
+                        <?php if (isset($fieldErrors['mdp'])) { ?>
+                            <p class="error"><?= $fieldErrors['mdp'] ?></p>
+                        <?php } ?>
                     </div>
+
                     <input type="submit" value="S'inscrire" role="button" class="contrast">
             </fieldset>
 
-            
+
             </form>
             <a href="?page=login">Déjà inscrit ? Connectez-vous ici</a>
         <?php } elseif ($page === 'login') { ?>
+            <div></div>
             <form action="" method="post">
                 <fieldset>
                     <input type="hidden" name="typeFormu" value="connexion">

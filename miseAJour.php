@@ -1,4 +1,5 @@
 <?php
+require_once('BaseDeDonnees.php');   
 class MiseAJOUR
 {
     public mixed $pdo;
@@ -7,35 +8,36 @@ class MiseAJOUR
         $bdd = new BaseDeDonnes();
         $this->pdo= $bdd->connexion();
     }
-    public function miseAJour(int $id, string $nom=NULL, string $prenom=NULL, int $num=NULL, string $mdp=NULL)
+    public function miseAJour(string $id, string $nom = null, string $prenom = null, string $num = null, string $mdp = null)
     {
         try {
-            // Assurer une mise à jour que uniquement les valeurs renseigner dans le formulaire soient mises à jour
+            // Construire la requête SQL dynamiquement
             $sql = "UPDATE utilisateurs SET ";
-            $params = []; 
-
-            if ($nom !== null) {
+            $params = [];
+    
+            if (!empty($nom)) { // Vérifie si le champ n'est pas vide
                 $sql .= "nom = :nom, ";
                 $params[':nom'] = $nom;
             }
-            if ($prenom !== null) {
+            if (!empty($prenom)) {
                 $sql .= "prenom = :prenom, ";
                 $params[':prenom'] = $prenom;
             }
-            if ($num !== null) {
+            if (!empty($num)) {
                 $sql .= "numero = :numero, ";
                 $params[':numero'] = $num;
             }
-            if ($mdp !== null) {
+            if (!empty($mdp)) {
                 $mdp = password_hash($mdp, PASSWORD_BCRYPT);
                 $sql .= "mdp = :mdp, ";
                 $params[':mdp'] = $mdp;
             }
     
+            // Retirer la virgule finale et ajouter la clause WHERE
             $sql = rtrim($sql, ", ") . " WHERE id = :id";
             $params[':id'] = $id;
     
-            
+            // Préparer et exécuter la requête
             $requete = $this->pdo->prepare($sql);
             $requete->execute($params);
     
@@ -44,6 +46,7 @@ class MiseAJOUR
             return "Erreur lors de la mise à jour : " . $e->getMessage();
         }
     }
+    
 }
 
 ?>
