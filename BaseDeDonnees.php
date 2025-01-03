@@ -1,4 +1,5 @@
 <?php
+namespace Bdd;
 class BaseDeDonnes {
     public function connexion(){
 

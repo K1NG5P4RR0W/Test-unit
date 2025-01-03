@@ -1,4 +1,5 @@
 <?php
+namespace tab;
 require_once('BaseDeDonnees.php');
 ?>
 <!DOCTYPE html>

@@ -1,4 +1,5 @@
 <?php 
+namespace log;
 spl_autoload_register();
 class Session{
     public mixed $pdo;

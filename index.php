@@ -1,5 +1,5 @@
 <?php
-
+namespace ind;
 
 require_once('inscription.php');
 require_once('connexion.php');

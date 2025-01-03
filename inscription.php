@@ -1,4 +1,5 @@
 <?php
+namespace Sign;
 require_once('BaseDeDonnees.php');
 class Inscription
 {
