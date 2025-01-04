@@ -1,8 +1,8 @@
 <?php
 
 
-require_once('inscription.php');
-require_once('connexion.php');
+require_once('src/inscription.php');
+require_once('src/connexion.php');
 if (isset($_SERVER['REQUEST_METHOD']) && $_SERVER['REQUEST_METHOD'] === 'POST') {
     if (isset($_POST['typeFormu']) && $_POST['typeFormu'] === 'inscription') {
         if (isset($_POST['nom']) and isset($_POST['prenom']) && isset($_POST['numero']) && isset($_POST['pseudo']) && isset($_POST['mdpFirst']) && isset($_POST['mdp'])) {
@@ -27,7 +27,7 @@ if (isset($_SERVER['REQUEST_METHOD']) && $_SERVER['REQUEST_METHOD'] === 'POST') 
                 $fieldErrors['mdpFirst'] = "Le mot de passe est requis.";
             } else {
                 // Vérification de la force du mot de passe
-                $inscrire = new Inscription();
+                $inscrire = new App\Inscription();
                 $passwordErrors = $inscrire->verifierMotDePasseFort($mdp);
 
                 if (!empty($passwordErrors) && is_array($passwordErrors)) {
@@ -39,7 +39,7 @@ if (isset($_SERVER['REQUEST_METHOD']) && $_SERVER['REQUEST_METHOD'] === 'POST') 
                 $fieldErrors['mdp'] = "Les mots de passe ne correspondent pas.";
             }
 
-            $inscrire = new Inscription();
+            $inscrire = new App\Inscription();
             $inscrire->inscriptionUtilisateur($nom, $prenom, $pseudo, $numero, $mdp);
         }
     } elseif (isset($_POST['typeFormu']) && $_POST['typeFormu'] === 'connexion') {

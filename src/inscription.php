@@ -1,9 +1,14 @@
 <?php
-require_once('BaseDeDonnees.php');
+
+namespace App;
+
+use App\BaseDeDonnes;
+
 class Inscription
 {
-    private $errors = [];
-    public mixed $pdo;
+    private array $errors = [];
+    private mixed $pdo;
+
     public function __construct()
     {
         $bdd = new BaseDeDonnes();
@@ -11,18 +16,17 @@ class Inscription
         $this->createTable();
     }
 
-
-    public function getErrors()
+    public function getErrors(): array
     {
         return $this->errors;
     }
 
-    private function addError($error)
+    private function addError(string $error): void
     {
         $this->errors[] = $error;
     }
 
-    public function createTable()
+    private function createTable(): void
     {
         $requete = "
         CREATE TABLE IF NOT EXISTS utilisateurs (
@@ -34,14 +38,12 @@ class Inscription
             mdp VARCHAR(300) NOT NULL,
             user_roles VARCHAR(25) DEFAULT 'utilisateur'
         )
-    ";
+        ";
         $this->pdo->exec($requete);
     }
 
-    public function verifierMotDePasseFort($mdp)
+    private function verifierMotDePasseFort(string $mdp): bool
     {
-        $errors = [];
-
         if (strlen($mdp) < 8) {
             $this->addError("Le mot de passe doit contenir au moins 8 caractères.");
         }
@@ -65,11 +67,10 @@ class Inscription
         return count($this->errors) === 0;
     }
 
-
-    public function inscriptionUtilisateur(string $nom, string $prenom, string $pseudo, string $numero, string $mdp)
+    public function inscriptionUtilisateur(string $nom, string $prenom, string $pseudo, string $numero, string $mdp): string
     {
         try {
-
+            // Vérifiez si le pseudo existe déjà
             $verifiePseudo = $this->pdo->prepare("SELECT COUNT(*) FROM utilisateurs WHERE pseudo = :pseudo");
             $verifiePseudo->bindParam(":pseudo", $pseudo);
             $verifiePseudo->execute();
@@ -79,31 +80,28 @@ class Inscription
                 $this->addError("Le pseudo existe déjà. Veuillez en choisir un autre.");
             }
 
+            // Vérifiez la force du mot de passe
+            $this->verifierMotDePasseFort($mdp);
 
-            $error = $this->verifierMotDePasseFort($mdp);
-            if ($error > 0) {
-                return $error;
+            if (count($this->errors) > 0) {
+                return "Erreur lors de l'inscription : " . implode(", ", $this->errors);
             }
 
-            if (count($this->errors) === 0) {
+            // Hachez le mot de passe
+            $mdp = password_hash($mdp, PASSWORD_BCRYPT);
 
-                $mdp = password_hash($mdp, PASSWORD_BCRYPT);
+            // Insérez l'utilisateur dans la base de données
+            $requete = $this->pdo->prepare("INSERT INTO utilisateurs (nom, prenom, pseudo, numero, mdp)
+                VALUES (:nom, :prenom, :pseudo, :numero, :mdp)");
+            $requete->bindParam(":nom", $nom);
+            $requete->bindParam(":prenom", $prenom);
+            $requete->bindParam(":pseudo", $pseudo);
+            $requete->bindParam(":numero", $numero);
+            $requete->bindParam(":mdp", $mdp);
+            $requete->execute();
 
-
-                $requete = $this->pdo->prepare("INSERT INTO utilisateurs (nom, prenom, pseudo, numero, mdp)
-            VALUES (:nom, :prenom, :pseudo, :numero, :mdp)");
-                $requete->bindParam(":nom", $nom);
-                $requete->bindParam(":prenom", $prenom);
-                $requete->bindParam(":pseudo", $pseudo);
-                $requete->bindParam(":numero", $numero);
-                $requete->bindParam(":mdp", $mdp);
-                $requete->execute();
-
-                return "Utilisateur créé avec succès";
-            }
-            return 'erreur lors de l\'inscription';
-        } catch (Exception $e) {
-
+            return "Utilisateur créé avec succès";
+        } catch (\Exception $e) {
             return "Erreur lors de l'inscription : " . $e->getMessage();
         }
     }
