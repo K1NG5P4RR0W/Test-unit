@@ -7,7 +7,7 @@ use App\BaseDeDonnes;
 class Inscription
 {
     private array $errors = [];
-    private mixed $pdo;
+    public mixed $pdo;
 
     public function __construct()
     {

@@ -29,6 +29,22 @@ class Session
             throw new \Exception("pseudo ou mot de passe incorrect !");
         }
     }
+
+    public function deconnexion()
+
+    {
+
+        session_start();
+
+        session_unset(); 
+
+        session_destroy(); 
+
+        header('Location: index.php'); 
+
+        exit();
+
+    }
 }
 
 ?>

@@ -2,64 +2,114 @@
 require('src/BaseDeDonnees.php');
 require ('src/connexion.php');
 
+
 use PHPUnit\Framework\TestCase;
 use App\Session;
+use App\Inscription;
 
 class SessionTest extends TestCase
 {
-    private $session;
+    
+    private $pdoMock;
+    private $statementMock;
 
     protected function setUp(): void
     {
-        // Mock la connexion à la base de données
-        $pdo = $this->createMock(\PDO::class);
-        $pdoStatement = $this->createMock(\PDOStatement::class);
+        // Mock de PDOStatement
+        $this->statementMock = $this->createMock(\PDOStatement::class);
 
-        $pdoStatement->method('fetch')->with(\PDO::FETCH_ASSOC)
-            ->willReturn([
-                'id' => 1,
-                'pseudo' => 'validUser',
-                'mdp' => password_hash('validPassword', PASSWORD_DEFAULT)
-            ]);
-
-        $pdo->method('prepare')
-            ->with("SELECT * FROM utilisateurs WHERE pseudo = :identifiant")
-            ->willReturn($pdoStatement);
-
-        $baseDeDonnes = $this->createMock(App\BaseDeDonnes::class);
-        $baseDeDonnes->method('connexion')->willReturn($pdo);
-
-        $this->session = new Session($baseDeDonnes);
+        // Mock de PDO
+        $this->pdoMock = $this->createMock(\PDO::class);
+        $this->pdoMock
+            ->method('prepare')
+            ->willReturn($this->statementMock);
     }
 
-    public function testConnexionStandard()
+    public function testInscriptionUtilisateurReussie()
     {
-        // Démarrer la session pour le test
-        session_start();
+        // Simule un pseudo non existant
+        $this->statementMock
+            ->method('fetchColumn')
+            ->willReturn(0); // Le pseudo n'existe pas
 
-        // Intercepter la sortie pour la redirection
-        ob_start();
+        // Simule une exécution réussie de l'insertion
+        $this->statementMock
+            ->method('execute')
+            ->willReturn(true);
 
-        // Appeler la méthode de connexion avec des identifiants valides
-        $this->session->sessionUtilisateur('validUser', 'validPassword');
+        // Instancie la classe Inscription avec le PDO mocké
+        
+        $inscription = new Inscription();
+        $inscription->pdo = $this->pdoMock; // Injection manuelle du mock PDO
 
-        // Récupérer la sortie pour vérifier la redirection
-        $output = ob_get_clean();
+        $resultat = $inscription->inscriptionUtilisateur(
+            'Dupont', 'Jean', 'jeandupont', '0123456789', 'StrongP@ssw0rd'
+        );
 
-        // Vérifier que la redirection vers le tableau de bord a eu lieu
-        $this->assertStringContainsString('Location: tableau_de_bord.php', $output);
+        $this->assertEquals('Utilisateur créé avec succès', $resultat);
+    }
 
-        // Vérifier que la session a été mise à jour
-        $this->assertTrue(array_key_exists('id_user', $_SESSION));
-        $this->assertTrue(array_key_exists('Pseudo', $_SESSION));
+    public function testInscriptionUtilisateurEchecPseudoExiste()
+    {
+        // Simule un pseudo déjà existant
+        $this->statementMock
+            ->method('fetchColumn')
+            ->willReturn(1); // Le pseudo existe déjà
 
-        // Vérifier que les informations de session sont correctes
+        // Instancie la classe Inscription avec le PDO mocké
+        $inscription = new Inscription();
+        $inscription->pdo = $this->pdoMock; // Injection manuelle du mock PDO
+
+        $resultat = $inscription->inscriptionUtilisateur(
+            'Dupont', 'Jean', 'jeandupont', '0123456789', 'StrongP@ssw0rd'
+        );
+
+        $this->assertStringContainsString(
+            'Le pseudo existe déjà',
+            $resultat
+        );
+    }
+
+    public function testSessionUtilisateurReussite()
+    {
+        // Simule les données retournées par la base de données
+        $userData = [
+            'id' => 1,
+            'pseudo' => 'testuser',
+            'mdp' => password_hash('password123', PASSWORD_DEFAULT),
+        ];
+
+        $this->statementMock
+            ->method('fetch')
+            ->willReturn($userData);
+
+        $session = new Session();
+        $session->pdo = $this->pdoMock; // Injection manuelle du mock PDO
+
+        $_SESSION = [];
+
+        $this->expectOutputString('');
+        $session->sessionUtilisateur('testuser', 'password123');
+
         $this->assertEquals(1, $_SESSION['id_user']);
-        $this->assertEquals('validUser', $_SESSION['Pseudo']);
+        $this->assertEquals('testuser', $_SESSION['Pseudo']);
+    }
 
-        // Nettoyer la session après le test
-        session_unset();
-        session_destroy();
+    public function testSessionUtilisateurEchec()
+    {
+        // Simule un utilisateur non trouvé
+        $this->statementMock
+            ->method('fetch')
+            ->willReturn(false);
+
+        $session = new Session();
+        $session->pdo = $this->pdoMock; // Injection manuelle du mock PDO
+
+        $this->expectException(\Exception::class);
+        $this->expectExceptionMessage('pseudo ou mot de passe incorrect !');
+
+        $session->sessionUtilisateur('fakeuser', 'fakepassword');
     }
 }
+
 ?>

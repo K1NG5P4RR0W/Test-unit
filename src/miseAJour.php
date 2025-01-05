@@ -1,4 +1,5 @@
 <?php
+namespace App;
 require_once('BaseDeDonnees.php');   
 class MiseAJOUR
 {
@@ -42,7 +43,7 @@ class MiseAJOUR
             $requete->execute($params);
     
             return "Mise à jour réussie.";
-        } catch (Exception $e) {
+        } catch (\Exception $e) {
             return "Erreur lors de la mise à jour : " . $e->getMessage();
         }
     }
